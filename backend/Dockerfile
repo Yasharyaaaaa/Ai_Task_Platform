@@ -17,4 +17,4 @@ COPY src/ ./src/
 RUN chown -R appuser:appgroup /app
 USER appuser
 EXPOSE 5000
-CMD ["node", "src/app.js"]
+CMD ["node", "src/server.js"]

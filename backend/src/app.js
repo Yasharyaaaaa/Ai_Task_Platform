@@ -3,8 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { authLimiter, taskLimiter, globalLimiter } = require('./middleware/rateLimiter');
-const connectDB = require('./config/db');
-const { connectRedis } = require('./config/redis');
 const authRoutes = require('./routes/authRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const errorHandler = require('./middleware/errorHandler');
@@ -31,12 +29,4 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 app.use(errorHandler);
 
-// Start
-const PORT = process.env.PORT || 5000;
-const start = async () => {
-  await connectDB();
-  await connectRedis();
-  app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-};
-
-start();
+module.exports = app;

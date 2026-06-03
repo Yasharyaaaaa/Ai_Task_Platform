@@ -8,6 +8,7 @@ const createLimiter = (options) =>
   rateLimit({
     standardHeaders: true,   // Return rate-limit info in RateLimit-* headers
     legacyHeaders: false,    // Disable the old X-RateLimit-* headers
+    skip: () => process.env.NODE_ENV === 'test', // don't throttle the test suite
     handler: (req, res) => {
       res.status(429).json({
         message: 'Too many requests, please try again later.',
