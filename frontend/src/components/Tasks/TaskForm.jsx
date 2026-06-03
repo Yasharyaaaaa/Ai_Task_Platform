@@ -1,29 +1,5 @@
 import { useState } from 'react';
-
-const STRING_OPS = ['uppercase', 'lowercase', 'reverse', 'wordcount'];
-const AI_OPS = ['summarize', 'rewrite', 'translate', 'keywords', 'sentiment', 'explain', 'custom'];
-
-const OP_META = {
-  uppercase: { icon: '🔠', label: 'Uppercase',  desc: 'Convert all text to UPPERCASE' },
-  lowercase: { icon: '🔡', label: 'Lowercase',  desc: 'Convert all text to lowercase' },
-  reverse:   { icon: '🔃', label: 'Reverse',    desc: 'Reverse the entire string' },
-  wordcount: { icon: '🔢', label: 'Word Count', desc: 'Count words in the text' },
-  summarize: { icon: '📝', label: 'Summarize',  desc: 'AI summary of the text' },
-  rewrite:   { icon: '✍️', label: 'Rewrite',    desc: 'AI rewrite for clarity & grammar' },
-  translate: { icon: '🌐', label: 'Translate',  desc: 'AI translate the text' },
-  keywords:  { icon: '🏷️', label: 'Keywords',   desc: 'Extract key terms with AI' },
-  sentiment: { icon: '😊', label: 'Sentiment',  desc: 'AI sentiment analysis' },
-  explain:   { icon: '💡', label: 'Explain',    desc: 'Explain in simple terms with AI' },
-  custom:    { icon: '⚡', label: 'Custom',     desc: 'Run your own AI instruction' },
-};
-
-const MODELS = [
-  { value: 'claude-haiku-4-5',  label: 'Haiku — fast' },
-  { value: 'claude-sonnet-4-6', label: 'Sonnet — balanced' },
-  { value: 'claude-opus-4-8',   label: 'Opus — best quality' },
-];
-
-const isAiOp = (op) => AI_OPS.includes(op);
+import { STRING_OPS, AI_OPS, OP_META, MODELS, isAiOp } from '../../config/operations';
 
 export default function TaskForm({ onTaskCreated }) {
   const [form, setForm] = useState({

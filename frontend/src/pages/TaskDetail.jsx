@@ -1,19 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-
-const STATUS_CONFIG = {
-  pending: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  icon: '⏳', label: 'Pending'  },
-  running: { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)', icon: '⚙️', label: 'Running'  },
-  success: { color: '#4ade80', bg: 'rgba(74,222,128,0.12)', icon: '✅', label: 'Success'  },
-  failed:  { color: '#f87171', bg: 'rgba(248,113,113,0.12)',icon: '❌', label: 'Failed'   },
-};
-
-const OP_ICON = {
-  uppercase: '🔠', lowercase: '🔡', reverse: '🔃', wordcount: '🔢',
-  summarize: '📝', rewrite: '✍️', translate: '🌐', keywords: '🏷️',
-  sentiment: '😊', explain: '💡', custom: '⚡',
-};
+import { STATUS_CONFIG, OP_ICON } from '../config/operations';
 
 function timeAgo(dateStr) {
   const diff = (Date.now() - new Date(dateStr)) / 1000;
@@ -58,7 +46,35 @@ export default function TaskDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const [acting, setActing] = useState(false);
+
+  const handleReRun = async () => {
+    setActing(true);
+    try {
+      const { data } = await api.put(`/tasks/${id}`);
+      setTask(data);
+      statusRef.current = data.status;
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to re-run task.');
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this task? This cannot be undone.')) return;
+    setActing(true);
+    try {
+      await api.delete(`/tasks/${id}`);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to delete task.');
+      setActing(false);
+    }
+  };
+
   const s = task ? (STATUS_CONFIG[task.status] || STATUS_CONFIG.pending) : null;
+  const canReRun = task && (task.status === 'success' || task.status === 'failed');
 
   if (loading) return (
     <div style={{ textAlign: 'center', padding: '100px 20px', color: 'rgba(255,255,255,0.4)', fontSize: '15px' }}>
@@ -91,12 +107,24 @@ export default function TaskDetail() {
           color: #a78bfa; padding: 8px 16px; border-radius: 9px; font-size: 13px; font-weight: 500;
           cursor: pointer; font-family: inherit; transition: all 0.2s; }
         .refresh-btn:hover { background: rgba(124,58,237,0.2); border-color: rgba(124,58,237,0.6); color: #fff; }
+        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .danger-btn { border: 1px solid rgba(248,113,113,0.3); background: rgba(248,113,113,0.08);
+          color: #fca5a5; padding: 8px 16px; border-radius: 9px; font-size: 13px; font-weight: 500;
+          cursor: pointer; font-family: inherit; transition: all 0.2s; }
+        .danger-btn:hover:not(:disabled) { background: rgba(248,113,113,0.18); border-color: rgba(248,113,113,0.6); color: #fff; }
+        .danger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
       `}</style>
 
       {/* Nav row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', gap: '10px', flexWrap: 'wrap' }}>
         <button className="back-btn" onClick={() => navigate('/dashboard')}>← Dashboard</button>
-        <button className="refresh-btn" onClick={fetchTask}>🔄 Refresh</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {canReRun && (
+            <button className="refresh-btn" onClick={handleReRun} disabled={acting}>↻ Re-run</button>
+          )}
+          <button className="refresh-btn" onClick={fetchTask} disabled={acting}>🔄 Refresh</button>
+          <button className="danger-btn" onClick={handleDelete} disabled={acting}>🗑 Delete</button>
+        </div>
       </div>
 
       {/* Main card */}
@@ -120,7 +148,7 @@ export default function TaskDetail() {
           </h1>
           <span style={{
             padding: '6px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-            background: s.bg, color: s.color, border: `1px solid ${s.color}44`,
+            background: s.bg, color: s.color, border: `1px solid ${s.border}`,
           }}>
             {s.icon} {s.label}
           </span>

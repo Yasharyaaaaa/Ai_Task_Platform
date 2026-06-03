@@ -1,17 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-
-const STATUS_CONFIG = {
-  pending: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.3)',  icon: '⏳', label: 'Pending'  },
-  running: { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)', icon: '⚙️', label: 'Running'  },
-  success: { color: '#4ade80', bg: 'rgba(74,222,128,0.12)', border: 'rgba(74,222,128,0.3)', icon: '✅', label: 'Success'  },
-  failed:  { color: '#f87171', bg: 'rgba(248,113,113,0.12)',border: 'rgba(248,113,113,0.3)',icon: '❌', label: 'Failed'   },
-};
-
-const OP_ICON = {
-  uppercase: '🔠', lowercase: '🔡', reverse: '🔃', wordcount: '🔢',
-  summarize: '📝', rewrite: '✍️', translate: '🌐', keywords: '🏷️',
-  sentiment: '😊', explain: '💡', custom: '⚡',
-};
+import { STATUS_CONFIG, OP_ICON } from '../../config/operations';
 
 function timeAgo(dateStr) {
   const diff = (Date.now() - new Date(dateStr)) / 1000;
@@ -21,9 +9,16 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString();
 }
 
-export default function TaskCard({ task, onRefresh }) {
+export default function TaskCard({ task, onRefresh, onReRun, onDelete }) {
   const navigate = useNavigate();
   const s = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
+  const canReRun = task.status === 'success' || task.status === 'failed';
+
+  const handleReRun = (e) => { e.stopPropagation(); onReRun?.(task._id); };
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (window.confirm('Delete this task? This cannot be undone.')) onDelete?.(task._id);
+  };
 
   return (
     <div style={{
@@ -62,6 +57,10 @@ export default function TaskCard({ task, onRefresh }) {
           color: rgba(255,255,255,0.5); padding: 5px 10px; border-radius: 7px; font-size: 12px;
           cursor: pointer; font-family: inherit; transition: all 0.2s; }
         .refresh-btn:hover { border-color: rgba(124,58,237,0.5); color: #fff; background: rgba(124,58,237,0.1); }
+        .danger-btn { border: 1px solid rgba(248,113,113,0.25); background: transparent;
+          color: rgba(248,113,113,0.7); padding: 5px 10px; border-radius: 7px; font-size: 12px;
+          cursor: pointer; font-family: inherit; transition: all 0.2s; }
+        .danger-btn:hover { border-color: rgba(248,113,113,0.6); color: #fca5a5; background: rgba(248,113,113,0.1); }
       `}</style>
 
       {/* Header row */}
@@ -120,10 +119,18 @@ export default function TaskCard({ task, onRefresh }) {
       )}
 
       {/* Footer */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '14px' }}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginTop: '14px' }}
         onClick={e => e.stopPropagation()}>
+        {canReRun && (
+          <button className="refresh-btn" onClick={handleReRun} title="Re-run this task">
+            ↻ Re-run
+          </button>
+        )}
         <button className="refresh-btn" onClick={onRefresh} title="Refresh status">
           🔄 Refresh
+        </button>
+        <button className="danger-btn" onClick={handleDelete} title="Delete task">
+          🗑 Delete
         </button>
       </div>
     </div>

@@ -4,17 +4,45 @@ import TaskForm from '../components/Tasks/TaskForm';
 import TaskList from '../components/Tasks/TaskList';
 import { useAuth } from '../context/AuthContext';
 
+const EMPTY_COUNTS = { total: 0, pending: 0, running: 0, success: 0, failed: 0 };
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
+  const [counts, setCounts] = useState(EMPTY_COUNTS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Filter / search / pagination state
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+
+  // Debounce the search box so we don't hit the API on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const fetchTasks = async () => {
     try {
       setError('');
-      const { data } = await api.get('/tasks');
-      setTasks(data);
+      const { data } = await api.get('/tasks', {
+        params: {
+          status: statusFilter,
+          search: debouncedSearch || undefined,
+          page,
+          limit: 10,
+        },
+      });
+      setTasks(data.tasks);
+      setCounts(data.counts || EMPTY_COUNTS);
+      setPages(data.pages || 1);
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to load tasks. Please try again.');
     } finally {
@@ -22,19 +50,23 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => { fetchTasks(); }, []);
+  useEffect(() => { fetchTasks(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [statusFilter, debouncedSearch, page]);
 
   const handleTaskCreated = async (form) => {
     await api.post('/tasks', form);
-    fetchTasks();
+    // Jump back to the first page so the new task is visible.
+    if (page !== 1) setPage(1);
+    else fetchTasks();
   };
 
-  const stats = {
-    total:   tasks.length,
-    pending: tasks.filter(t => t.status === 'pending').length,
-    running: tasks.filter(t => t.status === 'running').length,
-    success: tasks.filter(t => t.status === 'success').length,
-    failed:  tasks.filter(t => t.status === 'failed').length,
+  const handleReRun = async (id) => {
+    try { await api.put(`/tasks/${id}`); fetchTasks(); }
+    catch (err) { setError(err?.response?.data?.message || 'Failed to re-run task.'); }
+  };
+
+  const handleDelete = async (id) => {
+    try { await api.delete(`/tasks/${id}`); fetchTasks(); }
+    catch (err) { setError(err?.response?.data?.message || 'Failed to delete task.'); }
   };
 
   return (
@@ -63,11 +95,11 @@ export default function Dashboard() {
         gap: '12px', marginBottom: '28px', animation: 'fadeUp 0.4s ease 0.05s both',
       }}>
         {[
-          { label: 'Total',   value: stats.total,   color: '#a78bfa', bg: 'rgba(167,139,250,0.1)',  border: 'rgba(167,139,250,0.2)' },
-          { label: 'Pending', value: stats.pending, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',   border: 'rgba(245,158,11,0.2)'  },
-          { label: 'Running', value: stats.running, color: '#60a5fa', bg: 'rgba(96,165,250,0.1)',   border: 'rgba(96,165,250,0.2)'  },
-          { label: 'Success', value: stats.success, color: '#4ade80', bg: 'rgba(74,222,128,0.1)',   border: 'rgba(74,222,128,0.2)'  },
-          { label: 'Failed',  value: stats.failed,  color: '#f87171', bg: 'rgba(248,113,113,0.1)',  border: 'rgba(248,113,113,0.2)' },
+          { label: 'Total',   value: counts.total,   color: '#a78bfa', bg: 'rgba(167,139,250,0.1)',  border: 'rgba(167,139,250,0.2)' },
+          { label: 'Pending', value: counts.pending, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',   border: 'rgba(245,158,11,0.2)'  },
+          { label: 'Running', value: counts.running, color: '#60a5fa', bg: 'rgba(96,165,250,0.1)',   border: 'rgba(96,165,250,0.2)'  },
+          { label: 'Success', value: counts.success, color: '#4ade80', bg: 'rgba(74,222,128,0.1)',   border: 'rgba(74,222,128,0.2)'  },
+          { label: 'Failed',  value: counts.failed,  color: '#f87171', bg: 'rgba(248,113,113,0.1)',  border: 'rgba(248,113,113,0.2)' },
         ].map(({ label, value, color, bg, border }) => (
           <div key={label} style={{
             background: bg, border: `1px solid ${border}`, borderRadius: '12px',
@@ -102,13 +134,21 @@ export default function Dashboard() {
 
       {/* Task list */}
       <div style={{ animation: 'fadeUp 0.4s ease 0.15s both' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
-            ⏳ Loading tasks…
-          </div>
-        ) : (
-          <TaskList tasks={tasks} onRefresh={fetchTasks} />
-        )}
+        <TaskList
+          tasks={tasks}
+          loading={loading}
+          total={counts.total}
+          statusFilter={statusFilter}
+          onStatusChange={(s) => { setStatusFilter(s); setPage(1); }}
+          search={search}
+          onSearchChange={setSearch}
+          page={page}
+          pages={pages}
+          onPageChange={setPage}
+          onRefresh={fetchTasks}
+          onReRun={handleReRun}
+          onDelete={handleDelete}
+        />
       </div>
     </div>
   );
