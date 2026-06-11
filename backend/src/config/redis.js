@@ -1,12 +1,13 @@
 const { createClient } = require('redis');
+const logger = require('./logger');
 
 let client;
 
 const connectRedis = async () => {
   client = createClient({ url: process.env.REDIS_URL });
-  client.on('error', (err) => console.error('Redis Error:', err));
+  client.on('error', (err) => logger.error({ err }, 'Redis error'));
   await client.connect();
-  console.log('✅ Redis Connected');
+  logger.info('✅ Redis Connected');
   return client;
 };
 

@@ -21,7 +21,10 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.1",
-    "redis": "^5.12.1"
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "redis": "^5.12.1",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
