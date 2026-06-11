@@ -8,7 +8,7 @@ WORKDIR /app
 # Non-root user
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 COPY --from=builder /root/.local /home/appuser/.local
-COPY worker.py operations.py ./
+COPY worker.py operations.py retry.py ./
 RUN chown -R appuser:appgroup /app /home/appuser/.local
 USER appuser
 # HOME + PYTHONUSERBASE make Python resolve the user-site packages copied above;
