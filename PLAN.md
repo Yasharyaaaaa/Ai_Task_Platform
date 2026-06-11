@@ -1,10 +1,24 @@
 # AI Task Platform — Analysis & Completion Roadmap
 
+> **Status (2026-06-11): Phases 1–4 complete and pushed to GitHub.** The original
+> roadmap below is fully delivered — real Claude AI, the full task feature set,
+> 41 passing tests, CI, structured logging, OpenAPI docs, readiness probes, and a
+> worker dead-letter queue. The bug/feature lists are kept for historical context;
+> see **Phase status** and **What's next** for the current picture.
+
+## Phase status
+
+| Phase | Scope | Status |
+|---|---|---|
+| 0 — Initialize | Dedicated git repo + first commit | ✅ Done |
+| 1 — Stabilize | Global error handler, validation (400s), Redis guard, 401 auto-logout, axios timeout, Dashboard errors, TaskDetail polling fix | ✅ Done |
+| 2 — Real AI | Claude-backed ops (summarize/rewrite/translate/keywords/sentiment/explain/custom), prompt+model fields, token logging, prompt caching | ✅ Done |
+| 3 — Feature set | Status filter + search + pagination, re-run (PUT) & delete (DELETE), shared op config, toasts | ✅ Done |
+| 4 — Quality & Ops | 41 tests (Jest/supertest, pytest, Vitest), GitHub Actions CI, pino + structlog logging, OpenAPI/Swagger, readiness probe, dead-letter queue + retry, JWT_SECRET via env | ✅ Done |
+
 ## Overview
 
-This is a full-stack **asynchronous task-processing platform** built on a producer → queue → consumer pattern. The architecture is solid and production-shaped, but the project is a **fresh scaffold (zero git commits)** with several gaps: there is no real AI despite the "AI platform" branding, no tests, no CI, and a handful of concrete bugs.
-
-**Core MVP is ~85% complete and functional.** Estimated effort to a polished, AI-powered, tested product: **~7–10 focused working days.**
+This is a full-stack **asynchronous task-processing platform** built on a producer → queue → consumer pattern. It started as a fresh scaffold with no real AI, no tests, no CI, and several concrete bugs — all addressed across Phases 1–4.
 
 ---
 
@@ -26,9 +40,9 @@ This is a full-stack **asynchronous task-processing platform** built on a produc
 
 - User registration/login — bcrypt (12 rounds), JWT (7-day expiry), password-strength meter on register
 - JWT auth middleware + axios interceptor attaching `Bearer` token
-- Task create / list / get-by-id, all user-scoped
-- 4 text operations: `uppercase`, `lowercase`, `reverse`, `wordcount`
-- Live status (pending/running/success/failed) with color-coded badges + activity logs
+- Task create / list (filter + search + paginate) / get-by-id / re-run / delete, all user-scoped
+- 4 string ops (`uppercase`, `lowercase`, `reverse`, `wordcount`) **+ Claude AI ops** (`summarize`, `rewrite`, `translate`, `keywords`, `sentiment`, `explain`, `custom`) with model selection
+- Live status (pending/running/success/failed) with color-coded badges + activity logs (incl. token usage)
 - Dashboard with stats cards (total/pending/running/success/failed)
 - Rate limiting (global 300, auth 10, tasks 100 / 15min), Helmet, CORS
 - Mongo indexes: `userId`, `status`, compound `{userId, createdAt}`
@@ -61,18 +75,18 @@ This is a full-stack **asynchronous task-processing platform** built on a produc
 
 ---
 
-## How Much Work Is Left
+## How Much Work Was Left (now done)
 
-| Area | Status | Effort |
-|---|---|---|
-| Core task pipeline | ✅ Done | — |
-| Bug fixes (items 1–8 above) | ❌ Pending | ~0.5–1 day |
-| Real AI processing (Claude) | ❌ Missing | ~1–2 days |
-| Update/Delete task endpoints | ❌ Missing | ~0.5 day |
-| Validation + global error handler | ❌ Missing | ~0.5 day |
-| Tests (backend + worker + frontend) | ❌ None | ~2–3 days |
-| CI/CD (GitHub Actions) | ❌ None | ~0.5 day |
-| UX polish (filters, pagination, toasts, auto-logout) | 🟡 Partial | ~1–2 days |
+| Area | Status |
+|---|---|
+| Core task pipeline | ✅ Done |
+| Bug fixes (items 1–8 above) | ✅ Done (Phase 1) |
+| Real AI processing (Claude) | ✅ Done (Phase 2) |
+| Update/Delete task endpoints | ✅ Done (Phase 3) |
+| Validation + global error handler | ✅ Done (Phase 1) |
+| Tests (backend + worker + frontend) | ✅ Done — 41 tests (Phase 4) |
+| CI/CD (GitHub Actions) | ✅ Done (Phase 4) |
+| UX polish (filters, pagination, toasts, auto-logout) | ✅ Done (Phases 1 & 3) |
 
 ---
 
@@ -100,32 +114,46 @@ This is a full-stack **asynchronous task-processing platform** built on a produc
 
 ---
 
-## Roadmap (phased)
+## Roadmap (phased) — ✅ all delivered
 
-### Phase 0 — Initialize
+### Phase 0 — Initialize ✅
 - `git add` + initial commit (currently zero commits) so progress is tracked.
 
-### Phase 1 — Stabilize (fix the bugs)
+### Phase 1 — Stabilize (fix the bugs) ✅
 - Implement `errorHandler.js` and mount it last in `app.js`; convert controllers to `next(err)`.
 - Add validation (lightweight `express-validator` or hand-rolled guards) on auth + task create → return 400s.
 - Null-guard Redis in `taskController.js`; if enqueue fails, mark task `failed` with a log instead of leaving it stuck.
 - Frontend: axios response interceptor → auto-logout on 401; add request timeout; surface Dashboard fetch errors; fix TaskDetail polling effect deps.
 
-### Phase 2 — Real AI (Anthropic Claude)
+### Phase 2 — Real AI (Anthropic Claude) ✅
 - Add `anthropic` SDK to `worker/requirements.txt`; read `ANTHROPIC_API_KEY` from env (add to `.env.example` + compose).
 - Rewrite `worker/operations.py` to route AI operations through Claude (default `claude-opus-4-8` for quality / `claude-haiku-4-5` for speed); keep string ops as fallback. **Use prompt caching** for any shared system prompt.
 - Extend `Task` operation enum + frontend operation pills; add optional `prompt`/`model` fields.
 - Log token usage + latency into `task.logs`.
 
-### Phase 3 — Complete the feature set
+### Phase 3 — Complete the feature set ✅
 - Add `PUT /tasks/:id` (re-run) and `DELETE /tasks/:id`; wire delete/re-run buttons in `TaskCard`/`TaskDetail`.
 - Implement status filtering (`STATUS_FILTERS`), search, and pagination (`GET /tasks?status=&page=&limit=`).
 - Toasts + Dashboard loading skeleton; drive operation metadata from a shared config so backend/frontend stay in sync.
 
-### Phase 4 — Quality & Ops
+### Phase 4 — Quality & Ops ✅
 - Tests: backend (Jest + supertest for auth/task routes), worker (pytest for operations), frontend (Vitest + React Testing Library for forms/auth).
 - GitHub Actions: lint + test + docker build on PR.
 - Structured logging; move `JWT_SECRET` to `.env`; OpenAPI doc; dead-letter queue + retry in worker.
+
+---
+
+## What's next (beyond the original roadmap)
+
+The roadmap is complete; these are optional enhancements, roughly by value:
+
+- **Live updates** — replace the 3s polling in `TaskDetail`/`Dashboard` with WebSocket or SSE pushed from the worker.
+- **Verify CI is green** on GitHub Actions (watch the first `docker-build` run in particular).
+- **Dead-letter visibility** — surface `task_dead_letter` entries (admin view or a retry-from-DLQ endpoint).
+- **Auth hardening** — password reset + email verification, refresh-token rotation.
+- **File/document input** — upload `.txt`/`.pdf` and process with Claude.
+- **Quotas & metrics** — per-user usage limits, Prometheus metrics + a small admin dashboard.
+- **Export results** — copy / download task results as `.txt`/`.json`.
 
 ---
 
