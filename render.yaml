@@ -1,0 +1,73 @@
+# Render Blueprint — deploys the AI Task Platform.
+# Render → New → Blueprint → connect this repo. After the first deploy, set the
+# two-pass URLs (see comments on VITE_API_URL / FRONTEND_URL below).
+#
+# Note: if your Render account still shows the database type as "redis" instead
+# of "keyvalue", change `type: keyvalue` -> `type: redis` in the service block
+# and in both `fromService` refs below.
+
+services:
+  # ── Backend API (Docker web service) ───────────────────────────────────────
+  - type: web
+    name: ai-task-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: MONGO_URI            # Atlas SRV URI — MUST include /ai_tasks db name
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL         # set to https://<frontend>.onrender.com after deploy (CORS)
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          name: ai-task-redis
+          type: keyvalue
+          property: connectionString
+
+  # ── Worker (Docker background worker — requires a PAID plan) ────────────────
+  - type: worker
+    name: ai-task-worker
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./worker/Dockerfile
+    dockerContext: ./worker
+    envVars:
+      - key: MONGO_URI            # same Atlas URI — MUST include /ai_tasks
+        sync: false
+      - key: ANTHROPIC_API_KEY    # required for AI operations
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-haiku-4-5
+      - key: MAX_TASK_ATTEMPTS
+        value: "3"
+      - key: REDIS_URL
+        fromService:
+          name: ai-task-redis
+          type: keyvalue
+          property: connectionString
+
+  # ── Redis queue (Render Key Value) ─────────────────────────────────────────
+  - type: keyvalue
+    name: ai-task-redis
+    plan: free
+    maxmemoryPolicy: noeviction   # never evict queued tasks
+    ipAllowList: []               # internal-only (no public access)
+
+  # ── Frontend (static Vite build) ───────────────────────────────────────────
+  - type: web
+    name: ai-task-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL         # set to https://<backend>.onrender.com/api after backend deploys
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
